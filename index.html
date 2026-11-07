@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Minelink — Peer-to-peer Minesweeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0d1a;--panel:rgba(255,255,255,.05);--line:rgba(255,255,255,.1);--txt:#e8eaf6;--mut:#8b90b0;--acc:#7c5cff;--acc2:#22d3ee;--danger:#ff4d6d}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Space Grotesk',system-ui,-apple-system,Segoe UI,sans-serif;color:var(--txt);min-height:100vh;
+  background:radial-gradient(900px 600px at 10% -10%,#2f1d7a66,transparent),radial-gradient(800px 600px at 105% 0,#0b5c7a55,transparent),radial-gradient(700px 500px at 50% 120%,#7a1d5a33,transparent),var(--bg);
+  background-attachment:fixed;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+.hidden{display:none!important}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 40px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em;font-size:22px}
+.logo i{font-style:normal;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 6px 24px #7c5cff66}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;backdrop-filter:blur(14px);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+/* lobby */
+#lobby{display:grid;place-items:center;min-height:100vh;padding:16px}
+.lobby-card{width:min(440px,100%)}
+.lobby-card h1{font-size:34px;line-height:1.05;margin:18px 0 6px;letter-spacing:-.03em}
+.lobby-card h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lobby-card p{color:var(--mut);margin:0 0 20px;line-height:1.5}
+label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut);margin:14px 0 6px}
+.inp{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.28);outline:none;transition:border-color .15s, box-shadow .15s}
+.inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px #7c5cff33}
+.btn{border:0;cursor:pointer;padding:13px 18px;border-radius:12px;font-weight:700;transition:transform .1s,filter .15s,box-shadow .15s;background:rgba(255,255,255,.08);border:1px solid var(--line)}
+.btn:hover{filter:brightness(1.2)}.btn:active{transform:scale(.97)}
+.btn.pri{background:linear-gradient(135deg,var(--acc),#5b8cff);border:0;box-shadow:0 8px 24px #7c5cff55}
+.btn.sm{padding:8px 12px;font-size:14px;border-radius:10px}
+.btn.on{background:linear-gradient(135deg,#ff9f5a,#ff6b8b);border:0}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.code-in{text-align:center;font-size:24px;font-weight:700;letter-spacing:.35em;text-transform:uppercase;padding-left:calc(14px + .35em)}
+.or{display:flex;align-items:center;gap:12px;color:var(--mut);font-size:12px;margin:18px 0 2px;text-transform:uppercase;letter-spacing:.12em}
+.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+#err{color:var(--danger);min-height:20px;margin-top:12px;font-size:14px}
+/* game */
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+header.top .sp{flex:1}
+.pill{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-weight:700;font-variant-numeric:tabular-nums}
+.pill small{color:var(--mut);font-weight:500;text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+.roomcode{cursor:pointer;letter-spacing:.25em;font-size:18px;background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.game{display:grid;grid-template-columns:1fr 270px;gap:16px;align-items:start}
+@media(max-width:820px){.game{grid-template-columns:1fr}.side{order:-1}}
+.banner{text-align:center;padding:11px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--line);margin-bottom:12px;font-weight:500;min-height:44px;display:grid;place-items:center}
+.banner.win{background:linear-gradient(135deg,#06d6a022,#22d3ee22);border-color:#06d6a077}
+.banner.stun{background:#ff4d6d22;border-color:#ff4d6d77}
+.board{container-type:inline-size;display:grid;grid-template-columns:repeat(var(--w),1fr);gap:3px;width:min(100%,calc(var(--w)*44px + 20px));margin:0 auto;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.4);touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.c{aspect-ratio:1;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:calc(46cqw / var(--w));line-height:1;cursor:pointer;transition:transform .08s,filter .15s}
+.c:not(.r){background:linear-gradient(145deg,#3d4272,#272b4f);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 0 #12152b}
+.c:not(.r):hover{filter:brightness(1.35);transform:translateY(-1px)}
+.c.r{background:color-mix(in srgb,var(--oc,#888) 15%,#10132b);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--oc,#888) 25%,transparent);cursor:default}
+.c.r.n{cursor:pointer}
+.c.x{background:radial-gradient(circle,#ff4d6d,#6e0f2c)!important;box-shadow:0 0 18px #ff4d6d88!important;animation:shake .35s}
+.c.m{background:#1b1030!important;opacity:.85}
+.c.w{background:#4a1630!important}
+.c.pop{animation:pop .3s ease-out}
+.n1{color:#5ab0ff}.n2{color:#4ade80}.n3{color:#fb7185}.n4{color:#a78bfa}.n5{color:#fbbf24}.n6{color:#2dd4bf}.n7{color:#e879f9}.n8{color:#cbd5e1}
+@keyframes pop{0%{transform:scale(.55);opacity:.3}60%{transform:scale(1.14)}100%{transform:scale(1);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px) scale(1.1)}75%{transform:translateX(3px) scale(1.1)}}
+.side{display:flex;flex-direction:column;gap:12px}
+.side h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--mut)}
+.pl{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;margin-bottom:6px;background:rgba(255,255,255,.04);border:1px solid transparent}
+.pl.me{border-color:var(--line);background:rgba(255,255,255,.08)}
+.pl.off{opacity:.4}
+.dot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 12px currentColor;flex:none}
+.pl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.pl .nm em{font-style:normal;color:var(--mut);font-size:12px;margin-left:4px}
+.pl .sc{font-weight:700;font-variant-numeric:tabular-nums}
+.pl .bm{font-size:12px;color:var(--mut)}
+.hint{color:var(--mut);font-size:13px;line-height:1.55}
+.hint b{color:var(--txt);font-weight:500}
+select.inp{padding:8px 12px;width:auto}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1d2040;border:1px solid var(--line);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:9}
+#toast.show{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+
+<section id="lobby">
+  <div class="card lobby-card">
+    <div class="logo"><i>💣</i> Minelink</div>
+    <h1>Minesweeper,<br><span>together.</span></h1>
+    <p>One shared board. Race your friends to clear it — no accounts, no servers, just a 4-letter code.</p>
+    <label for="name">Your name</label>
+    <input id="name" class="inp" maxlength="14" placeholder="e.g. Sam" autocomplete="off">
+    <div style="height:16px"></div>
+    <button id="create" class="btn pri" style="width:100%">Create a room</button>
+    <div class="or">or join a friend</div>
+    <label for="code">Room code</label>
+    <div class="row">
+      <input id="code" class="inp code-in" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button id="join" class="btn" style="flex:0 0 auto">Join</button>
+    </div>
+    <div id="err"></div>
+  </div>
+</section>
+
+<section id="game" class="wrap hidden">
+  <header class="top">
+    <div class="logo"><i>💣</i></div>
+    <div class="pill" title="Click to copy invite link" id="codePill"><small>Room</small><span class="roomcode" id="roomcode">----</span></div>
+    <div class="sp"></div>
+    <div class="pill"><small>Mines</small><span id="mleft">0</span></div>
+    <div class="pill"><small>Time</small><span id="clock">000</span></div>
+    <button class="btn sm" id="leave">Leave</button>
+  </header>
+  <div class="game">
+    <div>
+      <div id="banner" class="banner"></div>
+      <div id="board" class="board"></div>
+    </div>
+    <aside class="side">
+      <div class="card" style="padding:16px">
+        <h3>Players</h3>
+        <div id="players"></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div id="hostctl" class="hidden" style="margin-bottom:14px">
+          <h3>Host controls</h3>
+          <div class="row">
+            <select id="diff" class="inp"><option value="easy">Easy 9×9</option><option value="medium">Medium 16×12</option><option value="hard">Hard 24×14</option></select>
+            <button id="newgame" class="btn pri sm">New game</button>
+          </div>
+        </div>
+        <button id="flagmode" class="btn sm" style="width:100%;margin-bottom:12px">🚩 Flag mode: off</button>
+        <div class="hint">
+          <b>Click</b> reveal · <b>Right-click / long-press</b> flag<br>
+          <b>Click a number</b> with enough flags to chord<br>
+          +1 per safe cell · <b>−10 &amp; 3s stun</b> per mine
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const PREFIX = 'minelink-';
+const COLORS = ['#ff6b8b','#4cc9f0','#ffd166','#06d6a0','#b388ff','#ff9f5a','#7bed9f','#f78fb3','#9aa5ff','#ffa8a8','#63e6be','#e599f7'];
+const DIFFS = { easy:{w:9,h:9,m:10}, medium:{w:16,h:12,m:34}, hard:{w:24,h:14,m:68} };
+
+let peer = null, isHost = false, code = '', me = 0, hostConn = null;
+let conns = new Map();          // player idx -> DataConnection (host only)
+let players = [];               // host-authoritative roster
+let G = null;                   // host-authoritative game
+let S = null;                   // latest snapshot (everyone)
+let flagMode = false, lpTime = 0;
+
+/* ---------- utils ---------- */
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove('show'),2200); }
+function err(msg){ $('#err').textContent = msg || ''; }
+function randCode(){ let s=''; for(let i=0;i<4;i++) s+=ALPHA[Math.floor(Math.random()*ALPHA.length)]; return s; }
+function getName(){ let n=$('#name').value.trim().slice(0,14); if(!n) n='Player'+Math.floor(Math.random()*90+10); try{localStorage.setItem('ml-name',n)}catch(e){} return n; }
+function esc(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- host: game logic ---------- */
+function nb(i){ const w=G.w,h=G.h,x=i%w,y=(i/w)|0,r=[]; for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ if(!dx&&!dy)continue; const nx=x+dx,ny=y+dy; if(nx>=0&&ny>=0&&nx<w&&ny<h) r.push(ny*w+nx);} return r; }
+function newGame(diff){
+  const d=DIFFS[diff], n=d.w*d.h;
+  G={diff,w:d.w,h:d.h,m:d.m,n,mine:new Uint8Array(n),num:new Uint8Array(n),rev:new Uint8Array(n),flag:new Uint8Array(n),boom:new Uint8Array(n),own:new Int8Array(n).fill(-1),started:false,over:false,win:false,t0:0,tEnd:0,safeLeft:n-d.m};
+  players.forEach(p=>{p.score=0;p.boom=0;p.stun=0;});
+}
+function place(first){
+  const ban=new Set([first,...nb(first)]);
+  if(G.n-ban.size<G.m){ ban.clear(); ban.add(first); }
+  let left=G.m;
+  while(left>0){ const i=Math.floor(Math.random()*G.n); if(ban.has(i)||G.mine[i])continue; G.mine[i]=1; left--; }
+  for(let i=0;i<G.n;i++){ if(G.mine[i])continue; let c=0; for(const j of nb(i)) c+=G.mine[j]; G.num[i]=c; }
+}
+function flood(i,p){
+  const st=[i];
+  while(st.length){
+    const c=st.pop();
+    if(G.rev[c]||G.flag[c]||G.mine[c])continue;
+    G.rev[c]=1; G.own[c]=p; G.safeLeft--; players[p].score++;
+    if(G.num[c]===0) for(const n of nb(c)) if(!G.rev[n]) st.push(n);
+  }
+}
+function reveal(i,p){
+  if(G.over||G.flag[i])return;
+  if(G.rev[i]){ // chord
+    if(G.boom[i]||G.num[i]===0)return;
+    const ns=nb(i); let f=0; for(const n of ns) f+=G.flag[n];
+    if(f!==G.num[i])return;
+    for(const n of ns) if(!G.rev[n]&&!G.flag[n]) reveal(n,p);
+    return;
+  }
+  if(!G.started){ place(i); G.started=true; G.t0=Date.now(); }
+  if(G.mine[i]){
+    G.rev[i]=1; G.boom[i]=1; G.own[i]=p;
+    players[p].score-=10; players[p].boom++; players[p].stun=Date.now()+3000;
+  } else flood(i,p);
+  if(G.safeLeft===0){ G.over=true; G.win=true; G.tEnd=Date.now(); }
+}
+function snap(){
+  let v='',o='',flags=0,booms=0;
+  for(let i=0;i<G.n;i++){
+    let c;
+    if(G.boom[i]){c='X';booms++;}
+    else if(G.rev[i])c=String(G.num[i]);
+    else if(G.over&&G.mine[i]&&!G.flag[i])c=G.win?'F':'M';
+    else if(G.over&&G.flag[i]&&!G.mine[i])c='W';
+    else if(G.flag[i])c='F';
+    else c='.';
+    if(G.flag[i])flags++;
+    v+=c; o+=G.own[i]<0?'-':G.own[i].toString(36);
+  }
+  const now=Date.now();
+  return {t:'state',code,diff:G.diff,w:G.w,h:G.h,m:G.m,v,o,started:G.started,over:G.over,win:G.win,
+    el:G.started?((G.over?G.tEnd:now)-G.t0):0, running:G.started&&!G.over,
+    left:G.m-flags-booms,
+    players:players.map(p=>({n:p.name,c:p.color,s:p.score,b:p.boom,on:p.on,st:Math.max(0,p.stun-now)}))};
+}
+function broadcast(){
+  const s=snap(); receive(s);
+  for(const c of conns.values()) if(c.open) c.send(s);
+}
+function hostHandle(idx,msg){
+  if(!G)return;
+  const p=players[idx]; if(!p)return;
+  if(msg.t==='reveal'){ if(p.stun>Date.now())return; reveal(msg.i,idx); }
+  else if(msg.t==='flag'){ const i=msg.i; if(!G.over&&!G.rev[i]) G.flag[i]^=1; }
+  else return;
+  broadcast();
+}
+
+/* ---------- networking ---------- */
+function startHost(){
+  err(''); const name=getName(); code=randCode();
+  peer=new Peer(PREFIX+code);
+  peer.on('open',()=>{
+    isHost=true; me=0;
+    players=[{name,color:COLORS[0],score:0,boom:0,stun:0,on:true}];
+    newGame('easy'); location.hash=code;
+    broadcast(); showGame();
+  });
+  peer.on('connection',conn=>{
+    conn.on('data',m=>{
+      if(m.t==='hello'){
+        let nm=String(m.name||'Player').slice(0,14);
+        let idx=players.findIndex(p=>!p.on&&p.name===nm);       // reclaim a seat after reconnecting
+        if(idx<0){ idx=players.length; players.push({name:nm,color:COLORS[idx%COLORS.length],score:0,boom:0,stun:0,on:true}); }
+        else players[idx].on=true;
+        conns.set(idx,conn); conn._idx=idx;
+        conn.send({t:'welcome',idx}); toast(nm+' joined'); broadcast();
+      } else if(conn._idx!==undefined) hostHandle(conn._idx,m);
+    });
+    const gone=()=>{ if(conn._idx!==undefined&&conns.get(conn._idx)===conn){ players[conn._idx].on=false; conns.delete(conn._idx); toast(players[conn._idx].name+' left'); broadcast(); } };
+    conn.on('close',gone); conn.on('error',gone);
+  });
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){ peer.destroy(); startHost(); }
+    else err('Could not create room ('+e.type+'). Try again.');
+  });
+}
+function startJoin(){
+  err(''); const name=getName(); code=$('#code').value.trim().toUpperCase();
+  if(code.length!==4){ err('Room codes are 4 characters.'); return; }
+  $('#join').textContent='…';
+  const reset=()=>{ $('#join').textContent='Join'; };
+  peer=new Peer();
+  const timeout=setTimeout(()=>{ err('Timed out connecting. Check the code and try again.'); reset(); },12000);
+  peer.on('error',e=>{
+    clearTimeout(timeout); reset();
+    err(e.type==='peer-unavailable'?'No room with that code.':'Connection problem ('+e.type+').');
+  });
+  peer.on('open',()=>{
+    const conn=peer.connect(PREFIX+code,{reliable:true}); hostConn=conn;
+    conn.on('open',()=>{ clearTimeout(timeout); reset(); conn.send({t:'hello',name}); });
+    conn.on('data',m=>{
+      if(m.t==='welcome'){ me=m.idx; showGame(); }
+      else if(m.t==='state') receive(m);
+    });
+    conn.on('close',()=>{ if(!isHost){ $('#banner').textContent='⚠️ Host disconnected — the room is closed.'; $('#banner').className='banner stun'; S&&(S.running=false); } });
+  });
+}
+function act(t,i){
+  if(!S||S.over)return;
+  if(isHost) hostHandle(0,{t,i});
+  else if(hostConn&&hostConn.open) hostConn.send({t,i});
+}
+
+/* ---------- rendering ---------- */
+let built='', prevV='', prevO='';
+function showGame(){ $('#lobby').classList.add('hidden'); $('#game').classList.remove('hidden'); $('#hostctl').classList.toggle('hidden',!isHost); }
+function receive(s){
+  s.rt=Date.now(); S=s;
+  $('#roomcode').textContent=s.code;
+  const key=s.w+'x'+s.h;
+  const b=$('#board');
+  if(built!==key){
+    built=key; prevV=''; prevO='';
+    b.style.setProperty('--w',s.w);
+    b.innerHTML=''; const f=document.createDocumentFragment();
+    for(let i=0;i<s.w*s.h;i++){ const d=document.createElement('div'); d.className='c'; d.dataset.i=i; f.appendChild(d); }
+    b.appendChild(f);
+  }
+  const cells=b.children;
+  for(let i=0;i<cells.length;i++){
+    const c=s.v[i], o=s.o[i];
+    if(prevV[i]===c&&prevO[i]===o)continue;
+    const el=cells[i], wasHidden=!prevV||prevV[i]==='.'||prevV[i]==='F';
+    let cls='c',txt='';
+    if(c==='.'){}
+    else if(c==='F'){cls+=' f';txt='🚩';}
+    else if(c==='W'){cls+=' w';txt='🚩';}
+    else if(c==='M'){cls+=' m';txt='💣';}
+    else if(c==='X'){cls+=' r x';txt='💥';}
+    else { cls+=' r'; if(c!=='0'){cls+=' n n'+c;txt=c;} }
+    if(prevV&&wasHidden&&(c>='0'&&c<='8'||c==='X')) cls+=' pop';
+    el.className=cls; el.textContent=txt;
+    if(o!=='-') el.style.setProperty('--oc',s.players[parseInt(o,36)]?.c||'#888'); else el.style.removeProperty('--oc');
+  }
+  prevV=s.v; prevO=s.o;
+  $('#mleft').textContent=s.left;
+  $('#diff').value=s.diff;
+  renderPlayers(); tick();
+}
+function renderPlayers(){
+  const order=S.players.map((p,i)=>({p,i})).sort((a,b)=>b.p.s-a.p.s);
+  $('#players').innerHTML=order.map(({p,i})=>
+    `<div class="pl ${i===me?'me':''} ${p.on?'':'off'}"><span class="dot" style="background:${p.c};color:${p.c}"></span>
+     <span class="nm">${esc(p.n)}<em>${i===0?'host':''}${i===me?(i===0?' · you':'you'):''}</em></span>
+     ${p.b?`<span class="bm">💥${p.b}</span>`:''}<span class="sc">${p.s}</span></div>`).join('');
+}
+function tick(){
+  if(!S)return;
+  const lag=Date.now()-S.rt;
+  const el=S.el+(S.running?lag:0);
+  $('#clock').textContent=String(Math.min(999,Math.floor(el/1000))).padStart(3,'0');
+  const bn=$('#banner'); if(hostConn&&!isHost&&!hostConn.open&&bn.classList.contains('stun')&&!S.running&&S.started&&!S.over) return;
+  const mine=S.players[me], stun=mine?mine.st-lag:0;
+  let cls='banner',txt;
+  if(S.over){
+    const top=Math.max(...S.players.map(p=>p.s)), w=S.players.filter(p=>p.s===top);
+    cls+=' win'; txt='🎉 Board cleared in '+Math.floor(el/1000)+'s — '+(w.length>1?'tie between '+w.map(p=>esc(p.n)).join(' & '):'<b>'+esc(w[0].n)+'</b> wins')+' with '+top+' pts';
+  } else if(stun>0){ cls+=' stun'; txt='💥 You hit a mine! Stunned for '+Math.ceil(stun/1000)+'s'; }
+  else if(!S.started) txt='Share code <b>'+S.code+'</b> with friends, then click any cell — the first click is always safe.';
+  else txt='Race to clear the board. Every safe cell is +1, every mine −10.';
+  if(bn.dataset.k!==txt){ bn.dataset.k=txt; bn.innerHTML=txt; }
+  bn.className=cls;
+}
+setInterval(tick,250);
+
+/* ---------- input ---------- */
+const board=$('#board'); let lpTimer=null, lpFired=false, startXY=null;
+board.addEventListener('click',e=>{
+  const c=e.target.closest('.c'); if(!c)return;
+  if(lpFired){ lpFired=false; return; }
+  act(flagMode?'flag':'reveal',+c.dataset.i);
+});
+board.addEventListener('contextmenu',e=>{
+  e.preventDefault(); const c=e.target.closest('.c'); if(!c)return;
+  if(Date.now()-lpTime<1000)return;
+  act('flag',+c.dataset.i);
+});
+board.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch')return;
+  const c=e.target.closest('.c'); if(!c)return;
+  lpFired=false; startXY=[e.clientX,e.clientY];
+  lpTimer=setTimeout(()=>{ lpFired=true; lpTime=Date.now(); act('flag',+c.dataset.i); if(navigator.vibrate)navigator.vibrate(20); },420);
+});
+['pointerup','pointercancel'].forEach(t=>board.addEventListener(t,()=>clearTimeout(lpTimer)));
+board.addEventListener('pointermove',e=>{ if(startXY&&Math.hypot(e.clientX-startXY[0],e.clientY-startXY[1])>10) clearTimeout(lpTimer); });
+
+$('#flagmode').onclick=()=>{ flagMode=!flagMode; const b=$('#flagmode'); b.textContent='🚩 Flag mode: '+(flagMode?'on':'off'); b.classList.toggle('on',flagMode); };
+$('#create').onclick=startHost;
+$('#join').onclick=startJoin;
+$('#code').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+$('#code').addEventListener('keydown',e=>{ if(e.key==='Enter')startJoin(); });
+$('#name').addEventListener('keydown',e=>{ if(e.key==='Enter')($('#code').value.length===4?startJoin:startHost)(); });
+$('#newgame').onclick=()=>{ if(!isHost)return; newGame($('#diff').value); broadcast(); };
+$('#diff').onchange=()=>{ if(isHost){ newGame($('#diff').value); broadcast(); } };
+$('#leave').onclick=()=>{ location.hash=''; location.reload(); };
+$('#codePill').onclick=()=>{
+  const link=location.protocol==='file:'?code:location.origin+location.pathname+'#'+code;
+  (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(()=>toast(location.protocol==='file:'?'Code copied':'Invite link copied'),()=>toast('Code: '+code));
+};
+
+/* ---------- boot ---------- */
+try{ $('#name').value=localStorage.getItem('ml-name')||''; }catch(e){}
+const h=location.hash.replace('#','').toUpperCase();
+if(/^[A-Z0-9]{4}$/.test(h)){ $('#code').value=h; $('#name').focus(); } else $('#name').focus();
+</script>
+</body>
+</html>
